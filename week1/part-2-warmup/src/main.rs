@@ -7,15 +7,43 @@ fn main() {
 }
 
 fn add_n(v: Vec<i32>, n: i32) -> Vec<i32> {
-    unimplemented!()
+    let mut _v=v;
+    let first_element=_v.get_mut(0);
+    match first_element{
+        Some(i) => *i+=n, 
+        None=> (),
+    }; 
+    _v
 }
 
 fn add_n_inplace(v: &mut Vec<i32>, n: i32) {
-    unimplemented!()
+    let first_element=v.get_mut(0);
+    match first_element{
+        Some(i) => *i+=n,
+        None=> (),
+    }; 
 }
 
+// 有提示要用 HashSet。。一开始没看见
 fn dedup(v: &mut Vec<i32>) {
-    unimplemented!()
+    let mut set:HashSet<i32>=HashSet::new();
+    // 下面这个例子其实也是说明了remove会导致迭代器失效，因此remove的参数是index，而不是迭代器，干脆让你断了用迭代器进行remove的念头
+    // for i in v{
+    //     if !set.contains(i){
+    //         set.insert(*i);
+    //     }else{
+    //         v.remove(i);
+    //     }
+    // }
+    let mut i=0;
+    while i< v.len(){
+        if !set.contains(&v[i]){
+            set.insert(v[i]);
+            i+=1;
+        }else{
+            v.remove(i);
+        }
+    }
 }
 
 #[cfg(test)]

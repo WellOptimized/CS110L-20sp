@@ -34,7 +34,24 @@ fn main() {
     // secret_word by doing secret_word_chars[i].
     let secret_word_chars: Vec<char> = secret_word.chars().collect();
     // Uncomment for debugging:
-    // println!("random word: {}", secret_word);
+    println!("random word: {}", secret_word);
 
     // Your code here! :)
+    let mut guess_count=0;
+    while guess_count<NUM_INCORRECT_GUESSES{
+        println!("Please input your guess.");
+        let mut guess = String::new();
+        io::stdin().read_line(&mut guess)
+            .expect("Failed to read line");
+
+        let guess: String =  guess.trim().to_string();
+
+        println!("You guessed: {}", guess);
+
+        if guess.eq(&secret_word){
+            println!("Success: {}", guess);
+            break;
+        }
+        guess_count+=1;
+    }  
 }
