@@ -31,17 +31,32 @@ impl Grid {
     /// give you more practice with Option :) and because this similar library returns Option:
     /// https://docs.rs/array2d/0.2.1/array2d/struct.Array2D.html
     #[allow(unused)] // TODO: delete this line when you implement this function
+    // 注意row是从0开始计算的
     pub fn get(&self, row: usize, col: usize) -> Option<usize> {
-        unimplemented!();
         // Be sure to delete the #[allow(unused)] line above
+        if row>=self.num_rows || col>=self.num_cols {
+            return None;
+        }
+        let x:usize = match self.elems.get(row * self.num_cols + col){
+            Some(&i)=> return Some(i),
+            None=> return None,
+        };
     }
 
     /// Sets the element at the specified location to the specified value. If the location is out
     /// of bounds, returns Err with an error message.
     #[allow(unused)] // TODO: delete this line when you implement this function
     pub fn set(&mut self, row: usize, col: usize, val: usize) -> Result<(), &'static str> {
-        unimplemented!();
         // Be sure to delete the #[allow(unused)] line above
+        if row>=self.num_rows || col>=self.num_cols{
+            return Err("set location is out of bounds");
+        }
+        let x: &mut usize = match self.elems.get_mut(row*self.num_cols + col){
+            Some(i) => i,
+            None=> return Err("can't find element"),
+        };
+        *x=val;
+        Ok(())
     }
 
     /// Prints a visual representation of the grid. You can use this for debugging.
