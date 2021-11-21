@@ -10,7 +10,7 @@ fn main() {
 }
 ```
 
-
+can't compile , s is borrowed already,can't change
 
 Example 2:
 ```
@@ -20,7 +20,7 @@ fn drip_drop() -> &String {
 }
 ```
 
-
+dangling reference 
 
 Example 3:
 ```
@@ -32,3 +32,4 @@ fn main() {
     println!("{}", s2);
 }
 ```
+cannot move out of index of `Vec<String>`
