@@ -11,32 +11,32 @@ struct Node<T> {
     next: Option<Box<Node<T>>>,
 }
 
-// pub struct LinkedListIter<'a,T> {
-//     current: &'a Option<Box<Node<T>>>,
-// }
+pub struct LinkedListIter<'a,T> {
+    current: &'a Option<Box<Node<T>>>,
+}
 
 
-// impl<T:Clone> Iterator for LinkedListIter<'_,T> {
-//     type Item = T;
-//     fn next(&mut self) -> Option<T> {
-//         match self.current {
-//             Some(node) =>  {
-//                 self.current=&node.next;
-//                 Some(node.value.clone())
-//             },
-//             None => None,
-//         }
-//     }
-// }
+impl<T:Clone> Iterator for LinkedListIter<'_,T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        match self.current {
+            Some(node) =>  {
+                self.current=&node.next;
+                Some(node.value.clone())
+            },
+            None => None,
+        }
+    }
+}
 
-// impl<'a,T:Clone> IntoIterator for &'a LinkedList<T> {
-//     type Item = T;
-//     type IntoIter = LinkedListIter<'a,T>;
+impl<'a,T:Clone> IntoIterator for &'a LinkedList<T> {
+    type Item = T;
+    type IntoIter = LinkedListIter<'a,T>;
     
-//     fn into_iter(self) -> LinkedListIter<'a,T> {
-//         LinkedListIter {current: &self.head}
-//     }
-// }
+    fn into_iter(self) -> LinkedListIter<'a,T> {
+        LinkedListIter {current: &self.head}
+    }
+}
  
 impl<T:Copy> Clone for Node<T>{
     fn clone(&self) -> Node<T>{
@@ -73,13 +73,14 @@ impl<T:PartialEq> PartialEq for LinkedList<T>{
     }
 }
 
-// ?
-impl<T> Iterator for LinkedList<T>{
-    type Item= T;
-    fn next(&mut self) -> Option<T>{
-        self.pop()
-    }
-}
+// // we use self.pop() here,which call self.head.take()?,and take must take out ownership,when counters reference,we can't
+// take out reference,because reference don't have ownership, so we need to another way to iterate on &LinkList<T>
+// impl<T> Iterator for LinkedList<T>{
+//     type Item= T;
+//     fn next(&mut self) -> Option<T>{
+//         self.pop()
+//     }
+// }
 
 pub trait ComputeNorm{
     fn compute_norm(&self) -> f64{

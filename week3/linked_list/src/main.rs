@@ -111,9 +111,9 @@ fn main() {
         for e in list1.into_iter() {
             println!("{:?}", e);
         }
-        // let list2=&list1;
-        // for e in list2.into_iter() {
-        //     println!("{:?}", e);
-        // }
+        let list2=&list1;
+        for e in list2.into_iter() {
+            println!("{:?}", e);
+        }
     }
 }
