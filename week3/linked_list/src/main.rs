@@ -74,20 +74,20 @@ fn main() {
         let mut list2 = list1.clone();
         println!("LinkedList (size = {}): {}", list1.get_size(), list1);
         println!("LinkedList (size = {}): {}", list2.get_size(), list2);
-        println!("list1 == list2: {}", list1.eq(&list2));
+        println!("list1 == list2: {}", list1==list2);
         list2.pop();
         println!("LinkedList (size = {}): {}", list1.get_size(), list1);
         println!("LinkedList (size = {}): {}", list2.get_size(), list2);
-        println!("list1 == list2: {}", list1.eq(&list2));
+        println!("list1 == list2: {}", list1==list2);
         list2.push(100);
         println!("LinkedList (size = {}): {}", list1.get_size(), list1);
         println!("LinkedList (size = {}): {}", list2.get_size(), list2);
-        println!("list1 == list2: {}", list1.eq(&list2));
+        println!("list1 == list2: {}", list1==list2);
         list2.pop();
         list2.push(10);
         println!("LinkedList (size = {}): {}", list1.get_size(), list1);
         println!("LinkedList (size = {}): {}", list2.get_size(), list2);
-        println!("list1 == list2: {}", list1.eq(&list2));
+        println!("list1 == list2: {}", list1==list2);
     }
 
     // for ComputeNorm
@@ -111,9 +111,9 @@ fn main() {
         for e in list1.into_iter() {
             println!("{:?}", e);
         }
-        let list2=&list1;
-        for e in list2.into_iter() {
-            println!("{:?}", e);
-        }
+        // let list2=&list1;
+        // for e in list2.into_iter() {
+        //     println!("{:?}", e);
+        // }
     }
 }
