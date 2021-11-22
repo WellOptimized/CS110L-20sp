@@ -15,6 +15,30 @@ impl Process {
         Process { pid, ppid, command }
     }
 
+    #[allow(unused)]
+    pub fn print(&self) {
+        println!("==========\"{}\" (pid {}, ppid {}) ==========",self.command,self.pid,self.ppid);
+        match self.list_open_files() {
+            None => println!(
+                "Warning: could not inspect file descriptors for this process! \
+                    It might have exited just as we were about to look at its fd table, \
+                    or it might have exited a while ago and is waiting for the parent \
+                    to reap it."
+            ),
+            Some(open_files) => {
+                for (fd, file) in open_files {
+                    println!(
+                        "{:<4} {:<15} cursor: {:<4} {}",
+                        fd,
+                        format!("({})", file.access_mode),
+                        file.cursor,
+                        file.colorized_name(),
+                    );
+                }
+            }
+        }
+    }
+
     /// This function returns a list of file descriptor numbers for this Process, if that
     /// information is available (it will return None if the information is unavailable). The
     /// information will commonly be unavailable if the process has exited. (Zombie processes
@@ -23,7 +47,24 @@ impl Process {
     #[allow(unused)] // TODO: delete this line for Milestone 3
     pub fn list_fds(&self) -> Option<Vec<usize>> {
         // TODO: implement for Milestone 3
-        unimplemented!();
+        let target_path= format!("/proc/{}/fd",self.pid);
+        let read_dir=fs::read_dir(target_path).ok()?;
+        let mut fds_list:Vec<usize>= Vec::new();
+        for result_direntry in read_dir{
+            let direntry = match result_direntry{
+                Ok(_i)=>_i,
+                Err(_e)=> return None,
+            };
+            let file_name_number=direntry.file_name().into_string().ok()?.parse::<usize>().ok()?;
+            // println!("{}",file_name_number);
+            fds_list.push(file_name_number);
+        }
+        if fds_list.len()>0{
+            Some(fds_list) 
+        }else{
+            None
+        }
+
     }
 
     /// This function returns a list of (fdnumber, OpenFile) tuples, if file descriptor
@@ -58,7 +99,7 @@ mod test {
             process
                 .list_fds()
                 .expect("Expected list_fds to find file descriptors, but it returned None"),
-            vec![0, 1, 2, 4, 5]
+            vec![0, 1, 2, 4, 5,19,99]
         );
         let _ = test_subprocess.kill();
     }
