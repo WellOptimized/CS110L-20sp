@@ -13,9 +13,13 @@ pub struct BalanceBeam {
 impl BalanceBeam {
     fn target_bin_path() -> std::path::PathBuf {
         let mut path = std::env::current_exe().expect("Could not get current test executable path");
+        // println!("{:?}",path);
         path.pop();
+        // println!("{:?}",path);
         path.pop();
+        // println!("{:?}",path);
         path.push("balancebeam");
+        // println!("{:?}",path);
         path
     }
 
@@ -26,11 +30,17 @@ impl BalanceBeam {
     ) -> BalanceBeam {
         let mut rng = rand::thread_rng();
         let address = format!("127.0.0.1:{}", rng.gen_range(1024, 65535));
+        println!("balancebeam address {}",address);
         let mut cmd = Command::new(BalanceBeam::target_bin_path());
         cmd.arg("--bind").arg(&address);
+
+        let mut _vec_upstream:Vec<&str>=Vec::new();
         for upstream in upstreams {
-            cmd.arg("--upstream").arg(upstream);
+            _vec_upstream.push(upstream);
         }
+        cmd.arg("--upstream").args(_vec_upstream);
+
+        println!("@@@@@@@@@@@@@@@@@@ {:?}",cmd);
         if let Some(active_health_check_interval) = active_health_check_interval {
             cmd.arg("--active-health-check-interval")
                 .arg(active_health_check_interval.to_string());
@@ -81,12 +91,15 @@ impl BalanceBeam {
 
         // Hack: wait for executable to start running
         delay_for(Duration::from_secs(1)).await;
+        
         BalanceBeam { child, address }
     }
 
     #[allow(dead_code)]
     pub async fn get(&self, path: &str) -> Result<String, reqwest::Error> {
         let client = reqwest::Client::new();
+
+        // println!("################  path is {}",path);
         client
             .get(&format!("http://{}{}", self.address, path))
             .header("x-sent-by", "balancebeam-tests")

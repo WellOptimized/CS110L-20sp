@@ -1,13 +1,13 @@
 mod request;
 mod response;
 
-use clap::Clap;
+use clap::Parser;
 use rand::{Rng, SeedableRng};
 use std::net::{TcpListener, TcpStream};
 
 /// Contains information parsed from the command-line invocation of balancebeam. The Clap macros
 /// provide a fancy way to automatically construct a command-line argument parser.
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(about = "Fun with load balancing")]
 struct CmdOptions {
     #[clap(
@@ -66,12 +66,16 @@ fn main() {
     }
     pretty_env_logger::init();
 
+    // println!("###############!");
+
     // Parse the command line arguments passed to this program
     let options = CmdOptions::parse();
+    println!("@@@@@@@@@@ {:?}",options);
     if options.upstream.len() < 1 {
         log::error!("At least one upstream server must be specified using the --upstream option.");
         std::process::exit(1);
     }
+    // println!("###############!");
 
     // Start listening for connections
     let listener = match TcpListener::bind(&options.bind) {
@@ -82,6 +86,7 @@ fn main() {
         }
     };
     log::info!("Listening for requests on {}", options.bind);
+    // println!("############### Listening for requests on {}", options.bind);
 
     // Handle incoming connections
     let state = ProxyState {
@@ -92,6 +97,7 @@ fn main() {
     };
     for stream in listener.incoming() {
         if let Ok(stream) = stream {
+            // println!("#############new connectio coming");
             // Handle the connection!
             handle_connection(stream, &state);
         }
@@ -131,7 +137,7 @@ fn handle_connection(mut client_conn: TcpStream, state: &ProxyState) {
             return;
         }
     };
-    let upstream_ip = client_conn.peer_addr().unwrap().ip().to_string();
+    let upstream_ip = client_conn.peer_addr().unwrap().ip().to_string();   
 
     // The client may now send us one or more requests. Keep trying to read requests until the
     // client hangs up or we get an error.

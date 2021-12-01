@@ -76,6 +76,7 @@ impl EchoServer {
             }
         });
 
+        println!("echo_server address {}",bind_addr_string);
         EchoServer {
             shutdown_signal_sender: shutdown_tx,
             server_task,
