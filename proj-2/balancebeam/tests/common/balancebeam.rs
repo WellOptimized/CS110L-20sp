@@ -34,11 +34,12 @@ impl BalanceBeam {
         let mut cmd = Command::new(BalanceBeam::target_bin_path());
         cmd.arg("--bind").arg(&address);
 
-        let mut _vec_upstream:Vec<&str>=Vec::new();
-        for upstream in upstreams {
-            _vec_upstream.push(upstream);
-        }
-        cmd.arg("--upstream").args(_vec_upstream);
+        // let mut _vec_upstream:Vec<&str>=Vec::new();
+        // for upstream in upstreams {
+        //     _vec_upstream.push(upstream);
+        // }
+        // cmd.arg("--upstream").args(_vec_upstream);
+        cmd.arg("--upstream").args(upstreams);
 
         println!("@@@@@@@@@@@@@@@@@@ {:?}",cmd);
         if let Some(active_health_check_interval) = active_health_check_interval {
