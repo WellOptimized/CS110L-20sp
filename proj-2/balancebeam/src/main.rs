@@ -5,7 +5,12 @@ use clap::Parser;
 use rand::{Rng, SeedableRng};
 use std::net::{TcpListener, TcpStream};
 use threadpool::ThreadPool;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex,RwLock};
+use std::io::{ErrorKind};
+use std::thread;
+use std::time;
+use std::collections::HashMap;
+use std::net::{IpAddr};
 
 /// Contains information parsed from the command-line invocation of balancebeam. The Clap macros
 /// provide a fancy way to automatically construct a command-line argument parser.
@@ -45,7 +50,7 @@ struct CmdOptions {
 /// to, what servers have failed, rate limiting counts, etc.)
 ///
 /// You should add fields to this struct in later milestones.
-#[derive(Clone)]
+
 struct ProxyState {
     /// How frequently we check whether upstream servers are alive (Milestone 4)
     #[allow(dead_code)]
@@ -58,6 +63,8 @@ struct ProxyState {
     max_requests_per_minute: usize,
     /// Addresses of servers that we are proxying to
     upstream_addresses: Vec<String>,
+    offline_upstream: RwLock<(usize,Vec<bool>)>,
+    rate_limit_counter: Mutex<HashMap<IpAddr, usize>>,
 }
 
 fn main() {
@@ -92,38 +99,136 @@ fn main() {
     // println!("############### Listening for requests on {}", options.bind);
 
     // Handle incoming connections
+    let upstream_len=options.upstream.len();
     let state = ProxyState {
         upstream_addresses: options.upstream,
         active_health_check_interval: options.active_health_check_interval,
         active_health_check_path: options.active_health_check_path,
         max_requests_per_minute: options.max_requests_per_minute,
+        offline_upstream:RwLock::new((upstream_len,vec![false;upstream_len])),
+        rate_limit_counter: Mutex::new(HashMap::new()),
     };
+    let shared_state=Arc::new(state);
 
-    let n_workers=4;
+    let state_for_active_check=shared_state.clone();
+    thread::spawn(move || {
+        active_health_check(&state_for_active_check);
+    });
+    let state_for_rate_check=shared_state.clone();
+    thread::spawn(move ||{
+        rate_limit_counter_refresher(&state_for_rate_check, 60);
+    });
 
+    let n_workers=10;
     let pool=ThreadPool::new(n_workers);
-    let shared_state=Arc::new(Mutex::new(state));
     for stream in listener.incoming() {
-        if let Ok(stream) = stream {
-            // println!("#############new connectio coming");
+        if let Ok(mut _stream) = stream {
             // Handle the connection!
+            if shared_state.max_requests_per_minute>0{
+                let mut rate_limit_counter = shared_state.rate_limit_counter.lock().unwrap();
+                let ip_addr=_stream.peer_addr().unwrap().ip();
+                let counter=rate_limit_counter.entry(ip_addr).or_insert(0);
+                *counter+=1;
+                if *counter > shared_state.max_requests_per_minute{
+                    request::read_from_stream(&mut _stream).ok();
+                    let response = response::make_http_error(http::StatusCode::TOO_MANY_REQUESTS);
+                    response::write_to_stream(&response, &mut _stream).unwrap();
+                    send_response(&mut _stream, &response);
+                    continue;
+                }
+            }
             let tmp_state=shared_state.clone();
             pool.execute(  move || {
-                let use_state=tmp_state.lock().unwrap();
-                handle_connection(stream, &use_state);
-            })
+                handle_connection(_stream, &tmp_state);
+            });
+        }
+    }
+}
+fn rate_limit_counter_refresher(state: &ProxyState, interval: u64) {
+    thread::sleep(time::Duration::from_secs(interval));
+    let mut rate_limit_counter = state.rate_limit_counter.lock().unwrap();
+    rate_limit_counter.clear();
+}
+
+fn check_server(state: &ProxyState , idx: usize, path: &String) -> Option<usize> {
+    let upstream_ip = &state.upstream_addresses[idx];
+    let mut stream = TcpStream::connect(upstream_ip).ok()?;
+    let request = http::Request::builder()
+            .method(http::Method::GET)
+            .uri(path)
+            .header("Host", upstream_ip)
+            .body(Vec::new())
+            .unwrap();
+
+    let _ = request::write_to_stream(&request, &mut stream).ok()?;
+    let res = response::read_from_stream(&mut stream, &http::Method::GET).ok()?;
+
+    if res.status().as_u16() == 200 {
+        return Some(200);
+    } else {
+        return None;
+    }
+}
+
+fn active_health_check(state: &ProxyState) {
+    let interval = state.active_health_check_interval as u64;
+    let path = &state.active_health_check_path;
+    loop {
+        thread::sleep(time::Duration::from_secs(interval));
+        let mut off = state.offline_upstream.write().unwrap();
+        for idx in 0..off.1.len() {
+            if check_server(&state, idx, path).is_some()  {
+                // down -> up
+                if off.1[idx] {
+                    off.0 += 1;
+                    off.1[idx] = false;
+                }
+            } else {
+                // up -> down
+                if !off.1[idx] {
+                    off.0 -= 1;
+                    off.1[idx] = true;
+                }
+            }
         }
     }
 }
 
 fn connect_to_upstream(state: &ProxyState) -> Result<TcpStream, std::io::Error> {
+    let mut off=state.offline_upstream.write().unwrap();
+    if off.0==0{
+        return Err(std::io::Error::new(ErrorKind::Other,"After down, All the upstream servers are down!"))
+    }
+
     let mut rng = rand::rngs::StdRng::from_entropy();
-    let upstream_idx = rng.gen_range(0, state.upstream_addresses.len());
+    let mut upstream_idx = rng.gen_range(0, state.upstream_addresses.len());
+    while off.1[upstream_idx]==true {
+        let mut rng = rand::rngs::StdRng::from_entropy();
+        upstream_idx = rng.gen_range(0, state.upstream_addresses.len());
+    }
     let upstream_ip = &state.upstream_addresses[upstream_idx];
+
     TcpStream::connect(upstream_ip).or_else(|err| {
         log::error!("Failed to connect to upstream {}: {}", upstream_ip, err);
+        println!("{}",off.0);
+
+        if off.1[upstream_idx]==false{
+            off.0-=1;
+            off.1[upstream_idx]=true;
+        }
+        
+        if off.0==0{
+            return Err(std::io::Error::new(ErrorKind::Other,"After down, All the upstream servers are down!"))
+        }else{
+            for i in 0..off.1.len(){
+                if off.1[i]==false {
+                    return TcpStream::connect(&state.upstream_addresses[i])
+                }
+            }
+        }
         Err(err)
     })
+
     // TODO: implement failover (milestone 3)
 }
 

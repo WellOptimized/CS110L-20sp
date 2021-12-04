@@ -193,9 +193,11 @@ async fn test_active_health_checks_check_http_status() {
 /// Make sure active health checks restore upstreams that were previously failed but are now
 /// working again:
 ///
-/// * Send a few requests
+/// (* Send a few requests
 /// * Kill one of the upstreams
-/// * Send some more requests
+/// * Send some more requests)
+/// 
+/// 
 /// * Bring the upstream back
 /// * Ensure requests are delivered again
 #[tokio::test]
